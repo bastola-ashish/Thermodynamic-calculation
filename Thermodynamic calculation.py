@@ -1,3 +1,5 @@
+# %%
+
 # =============================================================================
 # Import required packages
 # =============================================================================
@@ -8,11 +10,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # =============================================================================
+# Import results saved in a file
+# =============================================================================
+
+icp = pd.read_excel("result.xlsx",sheet_name="icp")    # ICP result
+strength = pd.read_excel("result.xlsx",sheet_name="strength")   # UCS result
+
+# =============================================================================
 # Database selection
 # Ensure that the database file is in the working directory
 # =============================================================================
 
-db = PhreeqcDatabase().load("CEMDATA18-31-03-2022-phaseVol.dat")
+db = ThermoFunDatabase("cemdata18")
 
 # =============================================================================
 # System definition and activity model selection
@@ -20,427 +29,178 @@ db = PhreeqcDatabase().load("CEMDATA18-31-03-2022-phaseVol.dat")
 
 aqueous = AqueousPhase(speciate("Al Si Ca K Mg Na S O H"))
 
-system = ChemicalSystem(db, aqueous)
-
-aqueous.set(ActivityModelPitzer())
+system = ChemicalSystem(db, aqueous.set(ActivityModelPitzer()))
 
 # =============================================================================
 # Define specification to setup pH constraint
 # =============================================================================
-specs = EquilibriumSpecs(system)
-specs.temperature()
-specs.pressure()
-specs.pH()
 
 # =============================================================================
-# Import results saved in a file
+# Speciation Calculation
 # =============================================================================
+chemicalprop_list=[]
+for i in range(len(icp)):
+    specs = EquilibriumSpecs(system)
+    specs.temperature()
+    specs.pressure()
+    specs.pH()
 
-stab_a = pd.read_excel("result.xlsx",sheet_name="stabA")    # ICP result
-stab_b = pd.read_excel("result.xlsx",sheet_name="stabB")    # ICP result
-type_3 = pd.read_excel("result.xlsx",sheet_name="type3")    # ICP result
-csa = pd.read_excel("result.xlsx",sheet_name="csa")         # ICP result
-strength = pd.read_excel("result.xlsx",sheet_name="strength")   # UCS result
+    conditions = EquilibriumConditions(specs)
+    conditions.temperature(25.0, "celsius")
+    conditions.pressure(1.0, "atm")
+    conditions.pH(icp['pH'][i])
 
-# =============================================================================
-# Create  chemical state
-# =============================================================================
+    state = ChemicalState(system)
+    state.set("H2O@",  1, "kg")
+    state.set("Al+3",  icp['Al'][i], "mol")
+    state.set("Ca+2",  icp['Ca'][i], "mol")
+    state.set("K+",  icp['K'][i], "mol")
+    state.set("Na+",  icp['Na'][i], "mol")
+    state.set("SO4-2",  icp['S'][i], "mol")
+    state.set("SiO2@",  icp['Si'][i], "mol")
 
-df = stab_b                         # select the ICP result to be analyzed
-strength=strength["stab_b"]         # select corresponding strength data   
+    # Define solver
+    solver = EquilibriumSolver(specs)
 
-# ----------------------------------------------------------------------------
-# Cheimcal state for 0 min
+    # Solve chemical state for 0 min
+    solver.solve(state, conditions)
+    chemicalprop_list.append(ChemicalProps(state))
+    
 
-t = 0
-
-state = ChemicalState(system)
-state.set("H2O",  1, "kg")
-state.set("Al+3",  df['Al'][t], "mol")
-state.set("Ca+2",  df['Ca'][t], "mol")
-state.set("K+",  df['K'][t], "mol")
-state.set("Na+",  df['Na'][t], "mol")
-state.set("SO4-2",  df['S'][t], "mol")
-state.set("SiO2",  df['Si'][t], "mol")
-
-state_0=state
-
-conditions_0 = EquilibriumConditions(specs)
-conditions_0.temperature(25.0, "celsius")
-conditions_0.pressure(1.0, "atm")
-conditions_0.pH(df['pH'][t])
-
-# ----------------------------------------------------------------------------
-
-# Chemical state for 15 min
-
-t = 1
-state = ChemicalState(system)
-state.set("H2O",  1, "kg")
-state.set("Al+3",  df['Al'][t], "mol")
-state.set("Ca+2",  df['Ca'][t], "mol")
-state.set("K+",  df['K'][t], "mol")
-state.set("Na+",  df['Na'][t], "mol")
-state.set("SO4-2",  df['S'][t], "mol")
-state.set("SiO2",  df['Si'][t], "mol")
-
-state_1=state
-
-conditions_1 = EquilibriumConditions(specs)
-conditions_1.temperature(25.0, "celsius")
-conditions_1.pressure(1.0, "atm")
-conditions_1.pH(df['pH'][t])
-
-# ----------------------------------------------------------------------------
-
-# Chemical state for 30 min
-
-t = 2
-state = ChemicalState(system)
-state.set("H2O",  1, "kg")
-state.set("Al+3",  df['Al'][t], "mol")
-state.set("Ca+2",  df['Ca'][t], "mol")
-state.set("K+",  df['K'][t], "mol")
-state.set("Na+",  df['Na'][t], "mol")
-state.set("SO4-2",  df['S'][t], "mol")
-state.set("SiO2",  df['Si'][t], "mol")
-
-state_2=state
-
-conditions_2 = EquilibriumConditions(specs)
-conditions_2.temperature(25.0, "celsius")
-conditions_2.pressure(1.0, "atm")
-conditions_2.pH(df['pH'][t])
-
-# ----------------------------------------------------------------------------
-
-# Chemical state for 1 hr
-
-t = 3
-state = ChemicalState(system)
-state.set("H2O",  1, "kg")
-state.set("Al+3",  df['Al'][t], "mol")
-state.set("Ca+2",  df['Ca'][t], "mol")
-state.set("K+",  df['K'][t], "mol")
-state.set("Na+",  df['Na'][t], "mol")
-state.set("SO4-2",  df['S'][t], "mol")
-state.set("SiO2",  df['Si'][t], "mol")
-
-state_3=state
-
-conditions_3 = EquilibriumConditions(specs)
-conditions_3.temperature(25.0, "celsius")
-conditions_3.pressure(1.0, "atm")
-conditions_3.pH(df['pH'][t])
-
-# ----------------------------------------------------------------------------
-
-# Chemical state for 1 d
-
-t = 4
-state = ChemicalState(system)
-state.set("H2O",  1, "kg")
-state.set("Al+3",  df['Al'][t], "mol")
-state.set("Ca+2",  df['Ca'][t], "mol")
-state.set("K+",  df['K'][t], "mol")
-state.set("Na+",  df['Na'][t], "mol")
-state.set("SO4-2",  df['S'][t], "mol")
-state.set("SiO2",  df['Si'][t], "mol")
-
-state_4=state
-
-conditions_4 = EquilibriumConditions(specs)
-conditions_4.temperature(25.0, "celsius")
-conditions_4.pressure(1.0, "atm")
-conditions_4.pH(df['pH'][t])
-
-# ----------------------------------------------------------------------------
-
-# Chemical state for 7 d
-
-t = 5
-state = ChemicalState(system)
-state.set("H2O",  1, "kg")
-state.set("Al+3",  df['Al'][t], "mol")
-state.set("Ca+2",  df['Ca'][t], "mol")
-state.set("K+",  df['K'][t], "mol")
-state.set("Na+",  df['Na'][t], "mol")
-state.set("SO4-2",  df['S'][t], "mol")
-state.set("SiO2",  df['Si'][t], "mol")
-
-state_5=state
-
-conditions_5 = EquilibriumConditions(specs)
-conditions_5.temperature(25.0, "celsius")
-conditions_5.pressure(1.0, "atm")
-conditions_5.pH(df['pH'][t])
-
-# =============================================================================
-# Solve for the equilibirum system
-# =============================================================================
-
-# Define solver
-solver = EquilibriumSolver(specs)
-
-# Solve chemical state for 0 min
-state = state_0; solver.solve(state, conditions_0)
-aprops_0 = AqueousProps(state)
-
-# Solve chemical state for 15 min
-state = state_1; solver.solve(state, conditions_1)
-aprops_1 = AqueousProps(state)
-
-# Solve chemical state for 30 min
-state = state_2; solver.solve(state, conditions_2)
-aprops_2 = AqueousProps(state)
-
-# Solve chemical state for 1hr
-state = state_3; solver.solve(state, conditions_3)
-aprops_3 = AqueousProps(state)
-
-# Solve chemical state for 1d
-state = state_4; solver.solve(state, conditions_4)
-aprops_4 = AqueousProps(state)
-
-# Solve chemical state for 7d
-state = state_5; solver.solve(state, conditions_5)
-aprops_5 = AqueousProps(state)
-
+# %%
 # =============================================================================
 # Saturation index of the phases of interest
 # =============================================================================
-
-csh=np.array([])
-ettrin=np.array([])
-gyp=np.array([])
-port=np.array([])
-gib=np.array([])
-strat=np.array([])
-mono=np.array([])
-
-csh_eff=np.array([])
-ettrin_eff=np.array([])
-gyp_eff=np.array([])
-port_eff=np.array([])
-gib_eff=np.array([])
-strat_eff=np.array([])
-mono_eff=np.array([])
-
-
-# At 0 min
-aprops = aprops_0
-
-csh=np.append(csh,max(aprops.saturationIndex("CSH3T-T2C"),aprops.saturationIndex("CSH3T-T5C"),
+icp["csh"]=[max(aprops.saturationIndex("CSH3T-T2C"),aprops.saturationIndex("CSH3T-T5C"),
         aprops.saturationIndex("CSH3T-TobH"),aprops.saturationIndex("CSHQ-JenD"),
         aprops.saturationIndex("CSHQ-JenH"),aprops.saturationIndex("CSHQ-TobD"),
-        aprops.saturationIndex("CSHQ-TobH"))[0])
-ettrin = np.append(ettrin,max(aprops.saturationIndex("ettringite"),aprops.saturationIndex("ettringite13"),
-              aprops.saturationIndex("Ettringite13_des"),aprops.saturationIndex("ettringite30"),
-              aprops.saturationIndex("ettringite9"),aprops.saturationIndex("Ettringite9_des"))[0])
-gyp=np.append(gyp,aprops.saturationIndex("Gp")[0])
-gib=np.append(gib,aprops.saturationIndex("Gbs")[0])
-port=np.append(port,aprops.saturationIndex("Portlandite")[0])
-strat=np.append(strat,max(aprops.saturationIndex("straetlingite"),aprops.saturationIndex("straetlingite5_5"),
-          aprops.saturationIndex("straetlingite7"))[0])
-mono=np.append(mono,max(aprops.saturationIndex("monosulphate10_5"),aprops.saturationIndex("monosulphate12"),
-          aprops.saturationIndex("monosulphate1205"),aprops.saturationIndex("monosulphate14"),
-          aprops.saturationIndex("monosulphate16"),aprops.saturationIndex("monosulphate9"))[0])
+        aprops.saturationIndex("CSHQ-TobH"))[0] for aprops in 
+        [AqueousProps(chemicalprop) for chemicalprop in chemicalprop_list]]
 
-csh_eff=np.append(csh_eff,max(aprops.saturationIndex("CSH3T-T2C")/5.5,aprops.saturationIndex("CSH3T-T5C")/5,
+icp["ettrin"] = [max(aprops.saturationIndex("ettringite"),aprops.saturationIndex("ettringite13"),
+              aprops.saturationIndex("Ettringite13_des"),aprops.saturationIndex("ettringite30"),
+              aprops.saturationIndex("ettringite9"),aprops.saturationIndex("Ettringite9_des"))[0] for aprops in 
+              [AqueousProps(chemicalprop) for chemicalprop in chemicalprop_list]]
+
+icp["gyp"]=[aprops.saturationIndex("Gp")[0] for aprops in 
+        [AqueousProps(chemicalprop) for chemicalprop in chemicalprop_list]]
+
+icp["gib"]=[aprops.saturationIndex("Gbs")[0] for aprops in 
+        [AqueousProps(chemicalprop) for chemicalprop in chemicalprop_list]]
+
+icp["port"]=[aprops.saturationIndex("Portlandite")[0] for aprops in 
+        [AqueousProps(chemicalprop) for chemicalprop in chemicalprop_list]]
+
+icp["strat"]=[max(aprops.saturationIndex("straetlingite"),aprops.saturationIndex("straetlingite5.5"),
+          aprops.saturationIndex("straetlingite7"))[0] for aprops in 
+          [AqueousProps(chemicalprop) for chemicalprop in chemicalprop_list]]
+
+icp["mono"]=[max(aprops.saturationIndex("monosulphate10.5"),aprops.saturationIndex("monosulphate12"),
+          aprops.saturationIndex("monosulphate1205"),aprops.saturationIndex("monosulphate14"),
+          aprops.saturationIndex("monosulphate16"),aprops.saturationIndex("monosulphate9"))[0] for aprops in 
+          [AqueousProps(chemicalprop) for chemicalprop in chemicalprop_list]]
+
+icp["csh_eff"]=[max(aprops.saturationIndex("CSH3T-T2C")/5.5,aprops.saturationIndex("CSH3T-T5C")/5,
         aprops.saturationIndex("CSH3T-TobH")/4.5,aprops.saturationIndex("CSHQ-JenD")/5.167,
         aprops.saturationIndex("CSHQ-JenH")/4.999,aprops.saturationIndex("CSHQ-TobD")/3.166825,
-        aprops.saturationIndex("CSHQ-TobH")/3.0001)[0])
-gyp_eff=np.append(gyp_eff,aprops.saturationIndex("Gp")[0]/2)
-gib_eff=np.append(gib_eff,aprops.saturationIndex("Gbs")[0]/2)
-port_eff=np.append(port_eff,aprops.saturationIndex("Portlandite")[0]/3)
-strat_eff=np.append(strat_eff,max(aprops.saturationIndex("straetlingite"),aprops.saturationIndex("straetlingite5_5"),
-          aprops.saturationIndex("straetlingite7"))[0]/7)
-ettrin_eff = np.append(ettrin_eff,max(aprops.saturationIndex("ettringite"),aprops.saturationIndex("ettringite13"),
+        aprops.saturationIndex("CSHQ-TobH")/3.0001)[0] for aprops in 
+        [AqueousProps(chemicalprop) for chemicalprop in chemicalprop_list]]
+
+icp["gyp_eff"]=[aprops.saturationIndex("Gp")[0]/2 for aprops in 
+        [AqueousProps(chemicalprop) for chemicalprop in chemicalprop_list]]
+
+icp["gib_eff"]=[aprops.saturationIndex("Gbs")[0]/2 for aprops in 
+        [AqueousProps(chemicalprop) for chemicalprop in chemicalprop_list]]
+
+icp["port_eff"]=[aprops.saturationIndex("Portlandite")[0]/3 for aprops in 
+        [AqueousProps(chemicalprop) for chemicalprop in chemicalprop_list]]
+
+icp["strat_eff"]=[max(aprops.saturationIndex("straetlingite"),aprops.saturationIndex("straetlingite5.5"),
+          aprops.saturationIndex("straetlingite7"))[0]/7 for aprops in 
+          [AqueousProps(chemicalprop) for chemicalprop in chemicalprop_list]]
+
+icp["ettrin_eff"] = [max(aprops.saturationIndex("ettringite"),aprops.saturationIndex("ettringite13"),
               aprops.saturationIndex("Ettringite13_des"),aprops.saturationIndex("ettringite30"),
-              aprops.saturationIndex("ettringite9"),aprops.saturationIndex("Ettringite9_des"))[0]/15)
-mono_eff=np.append(mono_eff,max(aprops.saturationIndex("monosulphate10_5"),aprops.saturationIndex("monosulphate12"),
+              aprops.saturationIndex("ettringite9"),aprops.saturationIndex("Ettringite9_des"))[0]/15 for aprops in 
+              [AqueousProps(chemicalprop) for chemicalprop in chemicalprop_list]]
+
+icp["mono_eff"]=[max(aprops.saturationIndex("monosulphate10.5"),aprops.saturationIndex("monosulphate12"),
           aprops.saturationIndex("monosulphate1205"),aprops.saturationIndex("monosulphate14"),
-          aprops.saturationIndex("monosulphate16"),aprops.saturationIndex("monosulphate9"))[0]/11)
-
-# At 15 min
-
-aprops = aprops_1
-csh=np.append(csh,max(aprops.saturationIndex("CSH3T-T2C"),aprops.saturationIndex("CSH3T-T5C"),
-        aprops.saturationIndex("CSH3T-TobH"),aprops.saturationIndex("CSHQ-JenD"),
-        aprops.saturationIndex("CSHQ-JenH"),aprops.saturationIndex("CSHQ-TobD"),
-        aprops.saturationIndex("CSHQ-TobH"))[0])
-ettrin = np.append(ettrin,max(aprops.saturationIndex("ettringite"),aprops.saturationIndex("ettringite13"),
-              aprops.saturationIndex("Ettringite13_des"),aprops.saturationIndex("ettringite30"),
-              aprops.saturationIndex("ettringite9"),aprops.saturationIndex("Ettringite9_des"))[0])
-gyp=np.append(gyp,aprops.saturationIndex("Gp")[0])
-gib=np.append(gib,aprops.saturationIndex("Gbs")[0])
-port=np.append(port,aprops.saturationIndex("Portlandite")[0])
-strat=np.append(strat,max(aprops.saturationIndex("straetlingite"),aprops.saturationIndex("straetlingite5_5"),
-          aprops.saturationIndex("straetlingite7"))[0])
-mono=np.append(mono,max(aprops.saturationIndex("monosulphate10_5"),aprops.saturationIndex("monosulphate12"),
-          aprops.saturationIndex("monosulphate1205"),aprops.saturationIndex("monosulphate14"),
-          aprops.saturationIndex("monosulphate16"),aprops.saturationIndex("monosulphate9"))[0])
-
-csh_eff=np.append(csh_eff,max(aprops.saturationIndex("CSH3T-T2C")/5.5,aprops.saturationIndex("CSH3T-T5C")/5,
-        aprops.saturationIndex("CSH3T-TobH")/4.5,aprops.saturationIndex("CSHQ-JenD")/5.167,
-        aprops.saturationIndex("CSHQ-JenH")/4.999,aprops.saturationIndex("CSHQ-TobD")/3.166825,
-        aprops.saturationIndex("CSHQ-TobH")/3.0001)[0])
-gyp_eff=np.append(gyp_eff,aprops.saturationIndex("Gp")[0]/2)
-gib_eff=np.append(gib_eff,aprops.saturationIndex("Gbs")[0]/2)
-port_eff=np.append(port_eff,aprops.saturationIndex("Portlandite")[0]/3)
-strat_eff=np.append(strat_eff,max(aprops.saturationIndex("straetlingite"),aprops.saturationIndex("straetlingite5_5"),
-          aprops.saturationIndex("straetlingite7"))[0]/7)
-ettrin_eff = np.append(ettrin_eff,max(aprops.saturationIndex("ettringite"),aprops.saturationIndex("ettringite13"),
-              aprops.saturationIndex("Ettringite13_des"),aprops.saturationIndex("ettringite30"),
-              aprops.saturationIndex("ettringite9"),aprops.saturationIndex("Ettringite9_des"))[0]/15)
-mono_eff=np.append(mono_eff,max(aprops.saturationIndex("monosulphate10_5"),aprops.saturationIndex("monosulphate12"),
-          aprops.saturationIndex("monosulphate1205"),aprops.saturationIndex("monosulphate14"),
-          aprops.saturationIndex("monosulphate16"),aprops.saturationIndex("monosulphate9"))[0]/11)
-
-
-# At 30 min
-
-aprops = aprops_2
-csh=np.append(csh,max(aprops.saturationIndex("CSH3T-T2C"),aprops.saturationIndex("CSH3T-T5C"),
-        aprops.saturationIndex("CSH3T-TobH"),aprops.saturationIndex("CSHQ-JenD"),
-        aprops.saturationIndex("CSHQ-JenH"),aprops.saturationIndex("CSHQ-TobD"),
-        aprops.saturationIndex("CSHQ-TobH"))[0])
-ettrin = np.append(ettrin,max(aprops.saturationIndex("ettringite"),aprops.saturationIndex("ettringite13"),
-              aprops.saturationIndex("Ettringite13_des"),aprops.saturationIndex("ettringite30"),
-              aprops.saturationIndex("ettringite9"),aprops.saturationIndex("Ettringite9_des"))[0])
-gyp=np.append(gyp,aprops.saturationIndex("Gp")[0])
-gib=np.append(gib,aprops.saturationIndex("Gbs")[0])
-port=np.append(port,aprops.saturationIndex("Portlandite")[0])
-strat=np.append(strat,max(aprops.saturationIndex("straetlingite"),aprops.saturationIndex("straetlingite5_5"),
-          aprops.saturationIndex("straetlingite7"))[0])
-mono=np.append(mono,max(aprops.saturationIndex("monosulphate10_5"),aprops.saturationIndex("monosulphate12"),
-          aprops.saturationIndex("monosulphate1205"),aprops.saturationIndex("monosulphate14"),
-          aprops.saturationIndex("monosulphate16"),aprops.saturationIndex("monosulphate9"))[0])
-
-csh_eff=np.append(csh_eff,max(aprops.saturationIndex("CSH3T-T2C")/5.5,aprops.saturationIndex("CSH3T-T5C")/5,
-        aprops.saturationIndex("CSH3T-TobH")/4.5,aprops.saturationIndex("CSHQ-JenD")/5.167,
-        aprops.saturationIndex("CSHQ-JenH")/4.999,aprops.saturationIndex("CSHQ-TobD")/3.166825,
-        aprops.saturationIndex("CSHQ-TobH")/3.0001)[0])
-gyp_eff=np.append(gyp_eff,aprops.saturationIndex("Gp")[0]/2)
-gib_eff=np.append(gib_eff,aprops.saturationIndex("Gbs")[0]/2)
-port_eff=np.append(port_eff,aprops.saturationIndex("Portlandite")[0]/3)
-strat_eff=np.append(strat_eff,max(aprops.saturationIndex("straetlingite"),aprops.saturationIndex("straetlingite5_5"),
-          aprops.saturationIndex("straetlingite7"))[0]/7)
-ettrin_eff = np.append(ettrin_eff,max(aprops.saturationIndex("ettringite"),aprops.saturationIndex("ettringite13"),
-              aprops.saturationIndex("Ettringite13_des"),aprops.saturationIndex("ettringite30"),
-              aprops.saturationIndex("ettringite9"),aprops.saturationIndex("Ettringite9_des"))[0]/15)
-mono_eff=np.append(mono_eff,max(aprops.saturationIndex("monosulphate10_5"),aprops.saturationIndex("monosulphate12"),
-          aprops.saturationIndex("monosulphate1205"),aprops.saturationIndex("monosulphate14"),
-          aprops.saturationIndex("monosulphate16"),aprops.saturationIndex("monosulphate9"))[0]/11)
-
-# At 1 hr
-
-aprops = aprops_3
-csh=np.append(csh,max(aprops.saturationIndex("CSH3T-T2C"),aprops.saturationIndex("CSH3T-T5C"),
-        aprops.saturationIndex("CSH3T-TobH"),aprops.saturationIndex("CSHQ-JenD"),
-        aprops.saturationIndex("CSHQ-JenH"),aprops.saturationIndex("CSHQ-TobD"),
-        aprops.saturationIndex("CSHQ-TobH"))[0])
-ettrin = np.append(ettrin,max(aprops.saturationIndex("ettringite"),aprops.saturationIndex("ettringite13"),
-              aprops.saturationIndex("Ettringite13_des"),aprops.saturationIndex("ettringite30"),
-              aprops.saturationIndex("ettringite9"),aprops.saturationIndex("Ettringite9_des"))[0])
-gyp=np.append(gyp,aprops.saturationIndex("Gp")[0])
-gib=np.append(gib,aprops.saturationIndex("Gbs")[0])
-port=np.append(port,aprops.saturationIndex("Portlandite")[0])
-strat=np.append(strat,max(aprops.saturationIndex("straetlingite"),aprops.saturationIndex("straetlingite5_5"),
-          aprops.saturationIndex("straetlingite7"))[0])
-mono=np.append(mono,max(aprops.saturationIndex("monosulphate10_5"),aprops.saturationIndex("monosulphate12"),
-          aprops.saturationIndex("monosulphate1205"),aprops.saturationIndex("monosulphate14"),
-          aprops.saturationIndex("monosulphate16"),aprops.saturationIndex("monosulphate9"))[0])
-
-csh_eff=np.append(csh_eff,max(aprops.saturationIndex("CSH3T-T2C")/5.5,aprops.saturationIndex("CSH3T-T5C")/5,
-        aprops.saturationIndex("CSH3T-TobH")/4.5,aprops.saturationIndex("CSHQ-JenD")/5.167,
-        aprops.saturationIndex("CSHQ-JenH")/4.999,aprops.saturationIndex("CSHQ-TobD")/3.166825,
-        aprops.saturationIndex("CSHQ-TobH")/3.0001)[0])
-gyp_eff=np.append(gyp_eff,aprops.saturationIndex("Gp")[0]/2)
-gib_eff=np.append(gib_eff,aprops.saturationIndex("Gbs")[0]/2)
-port_eff=np.append(port_eff,aprops.saturationIndex("Portlandite")[0]/3)
-strat_eff=np.append(strat_eff,max(aprops.saturationIndex("straetlingite"),aprops.saturationIndex("straetlingite5_5"),
-          aprops.saturationIndex("straetlingite7"))[0]/7)
-ettrin_eff = np.append(ettrin_eff,max(aprops.saturationIndex("ettringite"),aprops.saturationIndex("ettringite13"),
-              aprops.saturationIndex("Ettringite13_des"),aprops.saturationIndex("ettringite30"),
-              aprops.saturationIndex("ettringite9"),aprops.saturationIndex("Ettringite9_des"))[0]/15)
-mono_eff=np.append(mono_eff,max(aprops.saturationIndex("monosulphate10_5"),aprops.saturationIndex("monosulphate12"),
-          aprops.saturationIndex("monosulphate1205"),aprops.saturationIndex("monosulphate14"),
-          aprops.saturationIndex("monosulphate16"),aprops.saturationIndex("monosulphate9"))[0]/11)
-
-# At 1d
-aprops = aprops_4
-csh=np.append(csh,max(aprops.saturationIndex("CSH3T-T2C"),aprops.saturationIndex("CSH3T-T5C"),
-        aprops.saturationIndex("CSH3T-TobH"),aprops.saturationIndex("CSHQ-JenD"),
-        aprops.saturationIndex("CSHQ-JenH"),aprops.saturationIndex("CSHQ-TobD"),
-        aprops.saturationIndex("CSHQ-TobH"))[0])
-ettrin = np.append(ettrin,max(aprops.saturationIndex("ettringite"),aprops.saturationIndex("ettringite13"),
-              aprops.saturationIndex("Ettringite13_des"),aprops.saturationIndex("ettringite30"),
-              aprops.saturationIndex("ettringite9"),aprops.saturationIndex("Ettringite9_des"))[0])
-gyp=np.append(gyp,aprops.saturationIndex("Gp")[0])
-gib=np.append(gib,aprops.saturationIndex("Gbs")[0])
-port=np.append(port,aprops.saturationIndex("Portlandite")[0])
-strat=np.append(strat,max(aprops.saturationIndex("straetlingite"),aprops.saturationIndex("straetlingite5_5"),
-          aprops.saturationIndex("straetlingite7"))[0])
-mono=np.append(mono,max(aprops.saturationIndex("monosulphate10_5"),aprops.saturationIndex("monosulphate12"),
-          aprops.saturationIndex("monosulphate1205"),aprops.saturationIndex("monosulphate14"),
-          aprops.saturationIndex("monosulphate16"),aprops.saturationIndex("monosulphate9"))[0])
-
-csh_eff=np.append(csh_eff,max(aprops.saturationIndex("CSH3T-T2C")/5.5,aprops.saturationIndex("CSH3T-T5C")/5,
-        aprops.saturationIndex("CSH3T-TobH")/4.5,aprops.saturationIndex("CSHQ-JenD")/5.167,
-        aprops.saturationIndex("CSHQ-JenH")/4.999,aprops.saturationIndex("CSHQ-TobD")/3.166825,
-        aprops.saturationIndex("CSHQ-TobH")/3.0001)[0])
-gyp_eff=np.append(gyp_eff,aprops.saturationIndex("Gp")[0]/2)
-gib_eff=np.append(gib_eff,aprops.saturationIndex("Gbs")[0]/2)
-port_eff=np.append(port_eff,aprops.saturationIndex("Portlandite")[0]/3)
-strat_eff=np.append(strat_eff,max(aprops.saturationIndex("straetlingite"),aprops.saturationIndex("straetlingite5_5"),
-          aprops.saturationIndex("straetlingite7"))[0]/7)
-ettrin_eff = np.append(ettrin_eff,max(aprops.saturationIndex("ettringite"),aprops.saturationIndex("ettringite13"),
-              aprops.saturationIndex("Ettringite13_des"),aprops.saturationIndex("ettringite30"),
-              aprops.saturationIndex("ettringite9"),aprops.saturationIndex("Ettringite9_des"))[0]/15)
-mono_eff=np.append(mono_eff,max(aprops.saturationIndex("monosulphate10_5"),aprops.saturationIndex("monosulphate12"),
-          aprops.saturationIndex("monosulphate1205"),aprops.saturationIndex("monosulphate14"),
-          aprops.saturationIndex("monosulphate16"),aprops.saturationIndex("monosulphate9"))[0]/11)
-
-
-# At 7d
-aprops = aprops_5
-csh=np.append(csh,max(aprops.saturationIndex("CSH3T-T2C"),aprops.saturationIndex("CSH3T-T5C"),
-        aprops.saturationIndex("CSH3T-TobH"),aprops.saturationIndex("CSHQ-JenD"),
-        aprops.saturationIndex("CSHQ-JenH"),aprops.saturationIndex("CSHQ-TobD"),
-        aprops.saturationIndex("CSHQ-TobH"))[0])
-ettrin = np.append(ettrin,max(aprops.saturationIndex("ettringite"),aprops.saturationIndex("ettringite13"),
-              aprops.saturationIndex("Ettringite13_des"),aprops.saturationIndex("ettringite30"),
-              aprops.saturationIndex("ettringite9"),aprops.saturationIndex("Ettringite9_des"))[0])
-gyp=np.append(gyp,aprops.saturationIndex("Gp")[0])
-gib=np.append(gib,aprops.saturationIndex("Gbs")[0])
-port=np.append(port,aprops.saturationIndex("Portlandite")[0])
-strat=np.append(strat,max(aprops.saturationIndex("straetlingite"),aprops.saturationIndex("straetlingite5_5"),
-          aprops.saturationIndex("straetlingite7"))[0])
-mono=np.append(mono,max(aprops.saturationIndex("monosulphate10_5"),aprops.saturationIndex("monosulphate12"),
-          aprops.saturationIndex("monosulphate1205"),aprops.saturationIndex("monosulphate14"),
-          aprops.saturationIndex("monosulphate16"),aprops.saturationIndex("monosulphate9"))[0])
-
-csh_eff=np.append(csh_eff,max(aprops.saturationIndex("CSH3T-T2C")/5.5,aprops.saturationIndex("CSH3T-T5C")/5,
-        aprops.saturationIndex("CSH3T-TobH")/4.5,aprops.saturationIndex("CSHQ-JenD")/5.167,
-        aprops.saturationIndex("CSHQ-JenH")/4.999,aprops.saturationIndex("CSHQ-TobD")/3.166825,
-        aprops.saturationIndex("CSHQ-TobH")/3.0001)[0])
-gyp_eff=np.append(gyp_eff,aprops.saturationIndex("Gp")[0]/2)
-gib_eff=np.append(gib_eff,aprops.saturationIndex("Gbs")[0]/2)
-port_eff=np.append(port_eff,aprops.saturationIndex("Portlandite")[0]/3)
-strat_eff=np.append(strat_eff,max(aprops.saturationIndex("straetlingite"),aprops.saturationIndex("straetlingite5_5"),
-          aprops.saturationIndex("straetlingite7"))[0]/7)
-ettrin_eff = np.append(ettrin_eff,max(aprops.saturationIndex("ettringite"),aprops.saturationIndex("ettringite13"),
-              aprops.saturationIndex("Ettringite13_des"),aprops.saturationIndex("ettringite30"),
-              aprops.saturationIndex("ettringite9"),aprops.saturationIndex("Ettringite9_des"))[0]/15)
-mono_eff=np.append(mono_eff,max(aprops.saturationIndex("monosulphate10_5"),aprops.saturationIndex("monosulphate12"),
-          aprops.saturationIndex("monosulphate1205"),aprops.saturationIndex("monosulphate14"),
-          aprops.saturationIndex("monosulphate16"),aprops.saturationIndex("monosulphate9"))[0]/11)
+          aprops.saturationIndex("monosulphate16"),aprops.saturationIndex("monosulphate9"))[0]/11 for aprops in 
+          [AqueousProps(chemicalprop) for chemicalprop in chemicalprop_list]]
 
 # %%
 # =============================================================================
 # Plot the result
 # =============================================================================
+
+fig,axes=plt.subplots(2,2,figsize=[6.5,6.5])
+axes_twin = [ax.twinx() for ax in axes.flatten()]
+axes_twin_second = [ax.twinx() for ax in axes.flatten()]
+
+plt.rcParams["font.family"] = "sans-serif"
+plt.rcParams["font.sans-serif"] = ["Arial"]
+plt.rcParams["font.size"]=12
+
+for ax in axes_twin:
+    ax.set_ylim([0,300])
+    ax.spines.top.set_visible(0)
+    ax.spines.left.set_visible(0)
+    ax.spines.bottom.set_visible(0)
+    ax.spines.right.set_color("red")
+    ax.tick_params(axis='y', colors='red')
+    ax.set_yticks(np.linspace(0,300,5))
+    if ax in [axes_twin[0],axes_twin[2]]:
+        ax.set_yticks(np.linspace(0,300,5),[])
+
+for ax in axes_twin_second:
+    ax.set_ylim([4,12])
+    ax.set_yticks(np.linspace(4,12,5))
+    ax.spines.top.set_visible(0)
+    ax.spines.left.set_visible(0)
+    ax.spines.bottom.set_visible(0)
+    ax.spines["right"].set_position(("axes", 1.22))
+    ax.spines["right"].set_color("blue")
+    ax.tick_params(axis='y', colors='blue')
+    if ax in [axes_twin_second[0],axes_twin_second[2]]:
+        ax.spines["right"].set_position(("axes",1.1))
+        ax.set_yticks(np.linspace(4,12,5),[])
+        # ax.spines.right.set_visible(0)
+        # ax.set_yticks([],[])
+
+
+for ax in axes.flatten():
+    ax.grid(lw=0.75,alpha=0.5)
+    ax.set_xlim([0,6])
+    ax.hlines(0,6,0,color="r",ls="--")
+    ax.spines.right.set_visible(0)
+    ax.set_ylim([-6,2])
+    
+    
+x=np.arange(6)
+x1 = np.array([0,3,4,5])
+
+ax = axes[0,1]
+ax_1 = axes_twin[1]
+data = icp[icp["Stabilizer"]=="csa"]
+ax.plot(x,data["csh_eff"],"k--o",mfc="w",label="C-S-H")
+ax.plot(x,data["ettrin_eff"],"k--d",mfc="w",label="Ettringite")
+ax.plot(x,data["strat_eff"],"k--x",mfc="w",label="Straetlingite")
+ax.plot(x,data["gyp_eff"],"k--v",mfc="w",alpha=0.5,label="Gypsum")
+ax.plot(x,data["gib_eff"],"k--^",mfc="w",alpha=0.5,label="Gibbsite")
+ax.plot(x,data["port_eff"],"k--o",mfc="w",alpha=0.5,label="Portlandite")
+ax.plot(x,data["mono_eff"],"k--",mfc="w",alpha=0.5,label="Monosulfate")
+ax_1.plot(x1,strength["csa"]*100,"r--o",mfc="w")
+h1,l1 = ax.get_legend_handles_labels()
+h2,l2 = ax_1.get_legend_handles_labels()
+ax.legend(handles=h1+h2,labels=l1+l2,ncols=2,fontsize=8)
+
+
+plt.tight_layout()
+
+# %%
+
+
 
 x=np.arange(1,7,1)
 
@@ -503,3 +263,5 @@ ax1.legend(line, labels, ncol=2,fontsize=8,loc="lower right",frameon=False,borde
 plt.tight_layout()
 
 # plt.savefig("stab_b.svg")
+
+# %%
