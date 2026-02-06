@@ -265,5 +265,3 @@ ax_2.set_ylabel(r"\textbf{pH}",color="b")
 ax.set_xlabel(r"\textbf{Curing duration}")
 
 plt.tight_layout()
-# plt.subplots_adjust(wspace=0.1)
-# %%
